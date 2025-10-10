@@ -136,6 +136,21 @@ export async function getUpcomingTasks(days = 3) {
 }
 
 /**
+ * 期限超過タスクを取得
+ * @returns {Promise<Array>}
+ */
+export async function getOverdueTasks() {
+  const data = await loadTasks();
+  const now = new Date();
+
+  return data.tasks.filter(task => {
+    if (task.status !== 'pending') return false;
+    const deadline = new Date(task.deadline);
+    return deadline < now;
+  }).sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+}
+
+/**
  * タスクを完了にする
  * @param {string} taskId - タスクID
  * @returns {Promise<Object|null>}

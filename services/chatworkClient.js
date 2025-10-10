@@ -41,15 +41,33 @@ export async function sendMessage(message, retryCount = 0) {
 
 /**
  * 定期通知メッセージをフォーマット
+ * @param {Array} overdueTasks - 期限超過タスク
  * @param {Array} todayTasks - 今日期限のタスク
  * @param {Array} upcomingTasks - 3日以内のタスク
  * @returns {string}
  */
-export function formatDailyNotification(todayTasks, upcomingTasks) {
+export function formatDailyNotification(overdueTasks, todayTasks, upcomingTasks) {
   const now = new Date();
   const dateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
 
   let message = `[info][title]📋 タスク通知 - ${dateStr}[/title]\n`;
+
+  // 期限超過タスク
+  if (overdueTasks.length > 0) {
+    message += '\n【⚠️ 期限超過】\n';
+    overdueTasks.forEach(task => {
+      const deadline = new Date(task.deadline);
+      const dateStr = `${deadline.getMonth() + 1}/${deadline.getDate()}`;
+      const timeStr = `${String(deadline.getHours()).padStart(2, '0')}:${String(deadline.getMinutes()).padStart(2, '0')}`;
+
+      // 超過日数を計算
+      const diffMs = now - deadline;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      const overdueSuffix = diffDays > 0 ? ` - ${diffDays}日超過` : ' - 本日期限切れ';
+
+      message += `🔴 ${task.title} (${dateStr} ${timeStr})${overdueSuffix}\n`;
+    });
+  }
 
   // 今日期限のタスク
   if (todayTasks.length > 0) {

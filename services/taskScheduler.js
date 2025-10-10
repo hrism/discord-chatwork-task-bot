@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import { getTodayTasks, getUpcomingTasks, getAllTasks } from '../utils/taskManager.js';
+import { getTodayTasks, getUpcomingTasks, getAllTasks, getOverdueTasks } from '../utils/taskManager.js';
 import { sendMessage, formatDailyNotification, formatDeadlineNotification } from './chatworkClient.js';
 
 let scheduledJobs = [];
@@ -14,9 +14,10 @@ export function startScheduler() {
   const morningJob = cron.schedule(`0 ${morningHour} * * *`, async () => {
     console.log('定期通知を送信中...');
     try {
+      const overdueTasks = await getOverdueTasks();
       const todayTasks = await getTodayTasks();
       const upcomingTasks = await getUpcomingTasks(3);
-      const message = formatDailyNotification(todayTasks, upcomingTasks);
+      const message = formatDailyNotification(overdueTasks, todayTasks, upcomingTasks);
       await sendMessage(message);
       console.log('定期通知を送信しました');
     } catch (error) {
@@ -80,9 +81,10 @@ export function stopScheduler() {
 export async function sendTestNotification() {
   console.log('テスト通知を送信中...');
   try {
+    const overdueTasks = await getOverdueTasks();
     const todayTasks = await getTodayTasks();
     const upcomingTasks = await getUpcomingTasks(3);
-    const message = formatDailyNotification(todayTasks, upcomingTasks);
+    const message = formatDailyNotification(overdueTasks, todayTasks, upcomingTasks);
     await sendMessage(message);
     console.log('テスト通知を送信しました');
     return true;
