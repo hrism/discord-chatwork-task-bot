@@ -244,3 +244,25 @@ export async function getTaskByShortId(shortId) {
   const data = await loadTasks();
   return data.tasks.find(t => t.id.startsWith(shortId)) || null;
 }
+
+/**
+ * タスクの期限を更新
+ * @param {string} taskId - タスクID
+ * @param {string} newDateText - 新しい日付テキスト
+ * @returns {Promise<Object|null>}
+ */
+export async function updateTaskDeadline(taskId, newDateText) {
+  const data = await loadTasks();
+  const task = data.tasks.find(t => t.id === taskId);
+
+  if (!task) {
+    return null;
+  }
+
+  const parsed = parseJapaneseDate(newDateText);
+  task.deadline = parsed.date.toISOString();
+  task.updatedAt = new Date().toISOString();
+
+  await saveTasks(data);
+  return task;
+}

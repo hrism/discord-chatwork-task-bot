@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits } from 'discord.js';
-import { addTask, getAllTasks, getTodayTasks, getTaskByShortId, completeTask, deleteTask, formatTaskList } from '../utils/taskManager.js';
+import { addTask, getAllTasks, getTodayTasks, getTaskByShortId, completeTask, deleteTask, formatTaskList, updateTaskDeadline } from '../utils/taskManager.js';
 import { sendMessage, formatUrgentNotification } from './chatworkClient.js';
 
 const client = new Client({
@@ -54,6 +54,9 @@ async function handleMessage(message) {
     } else if (/完了/.test(content) && /[a-f0-9]{8}/i.test(content)) {
       // IDが含まれる場合のみ完了コマンドとして処理
       await handleCompleteCommand(message, content);
+    } else if (/変更/.test(content) && /[a-f0-9]{8}/i.test(content)) {
+      // IDが含まれる場合のみ変更コマンドとして処理
+      await handleUpdateCommand(message, content);
     } else {
       // タスク登録
       await handleAddTask(message, content);
@@ -158,6 +161,7 @@ async function handleHelpCommand(message) {
 \`今日\` - 今日期限のタスクを表示
 \`削除 [ID]\` - タスクを削除
 \`完了 [ID]\` - タスクを完了にする
+\`[ID] 10/25\` または \`[ID]を明日に変更\` - タスクの期限を変更
 \`ヘルプ\` - このヘルプを表示
 
 🔔 **通知**
@@ -167,6 +171,40 @@ async function handleHelpCommand(message) {
   `;
 
   await message.reply(helpText);
+}
+
+/**
+ * タスク期限変更
+ */
+async function handleUpdateCommand(message, content) {
+  const idMatch = content.match(/[a-f0-9]{8}/i);
+  if (!idMatch) {
+    await message.reply('使い方: `[ID] 10/25` または `[ID]を明日に変更`\nIDはリスト表示時の[]内の文字列です');
+    return;
+  }
+
+  const shortId = idMatch[0];
+  const task = await getTaskByShortId(shortId);
+
+  if (!task) {
+    await message.reply('指定されたIDのタスクが見つかりません。');
+    return;
+  }
+
+  // ID以外の部分を日付テキストとして抽出
+  const dateText = content.replace(shortId, '').replace(/変更|を|に/g, '').trim();
+
+  if (!dateText) {
+    await message.reply('新しい日付を指定してください。\n例: `' + shortId + ' 10/25` または `' + shortId + ' 明日`');
+    return;
+  }
+
+  const updated = await updateTaskDeadline(task.id, dateText);
+  if (updated) {
+    await message.reply(`✅ タスクの期限を変更しました: ${updated.title}\n新しい期限: ${new Date(updated.deadline).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}`);
+  } else {
+    await message.reply('タスクの期限変更に失敗しました。');
+  }
 }
 
 /**
