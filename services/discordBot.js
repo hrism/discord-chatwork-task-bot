@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import { addTask, getAllTasks, getTodayTasks, getTaskByShortId, completeTask, deleteTask, formatTaskList, updateTaskDeadline } from '../utils/taskManager.js';
 import { sendMessage, formatUrgentNotification } from './chatworkClient.js';
+import { formatJapaneseDate } from '../utils/dateParser.js';
 
 const client = new Client({
   intents: [
@@ -201,7 +202,7 @@ async function handleUpdateCommand(message, content) {
 
   const updated = await updateTaskDeadline(task.id, dateText);
   if (updated) {
-    await message.reply(`✅ タスクの期限を変更しました: ${updated.title}\n新しい期限: ${new Date(updated.deadline).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}`);
+    await message.reply(`✅ タスクの期限を変更しました: ${updated.title}\n新しい期限: ${formatJapaneseDate(new Date(updated.deadline))}`);
   } else {
     await message.reply('タスクの期限変更に失敗しました。');
   }
@@ -219,7 +220,7 @@ async function handleAddTask(message, content) {
     let reply = `✅ タスクを登録しました!\n`;
     reply += `タスクID: ${shortId}\n`;
     reply += `タスク: ${task.title}\n`;
-    reply += `期限: ${new Date(task.deadline).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}`;
+    reply += `期限: ${formatJapaneseDate(new Date(task.deadline))}`;
 
     await message.reply(reply);
 
