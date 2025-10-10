@@ -14,11 +14,6 @@ export function parseJapaneseDate(text) {
   let priority = 'normal';
   let title = text;
 
-  // 優先度キーワードをチェック
-  if (/重要|緊急|至急/.test(text)) {
-    priority = 'urgent';
-  }
-
   // 時刻のパターンをマッチング
   const timePatterns = [
     { pattern: /(\d{1,2})時(\d{1,2})?分?/, type: 'hour' },
