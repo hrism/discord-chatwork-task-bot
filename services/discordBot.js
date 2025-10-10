@@ -1,0 +1,217 @@
+import { Client, GatewayIntentBits } from 'discord.js';
+import { addTask, getAllTasks, getTodayTasks, getTaskByIndex, completeTask, deleteTask, formatTaskList } from '../utils/taskManager.js';
+import { sendMessage, formatUrgentNotification } from './chatworkClient.js';
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
+
+/**
+ * Discord Botを起動
+ */
+export async function startBot() {
+  return new Promise((resolve, reject) => {
+    client.once('ready', () => {
+      console.log(`Discord Botにログインしました: ${client.user.tag}`);
+      resolve(client);
+    });
+
+    client.on('error', (error) => {
+      console.error('Discord接続エラー:', error);
+    });
+
+    client.on('messageCreate', handleMessage);
+
+    client.login(process.env.DISCORD_TOKEN).catch(reject);
+  });
+}
+
+/**
+ * メッセージハンドラー
+ * @param {Message} message - Discordメッセージ
+ */
+async function handleMessage(message) {
+  // Bot自身のメッセージは無視
+  if (message.author.bot) return;
+
+  const content = message.content.trim();
+
+  try {
+    // コマンドの処理
+    if (content === 'リスト' || content === '一覧') {
+      await handleListCommand(message);
+    } else if (content === '今日') {
+      await handleTodayCommand(message);
+    } else if (content.startsWith('削除 ')) {
+      await handleDeleteCommand(message, content);
+    } else if (content.startsWith('完了 ')) {
+      await handleCompleteCommand(message, content);
+    } else if (content === 'ヘルプ' || content === 'help') {
+      await handleHelpCommand(message);
+    } else {
+      // タスク登録
+      await handleAddTask(message, content);
+    }
+  } catch (error) {
+    console.error('メッセージ処理エラー:', error);
+    await message.reply('エラーが発生しました。もう一度お試しください。');
+  }
+}
+
+/**
+ * タスク一覧表示
+ */
+async function handleListCommand(message) {
+  const tasks = await getAllTasks('pending');
+  const sortedTasks = tasks.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+  const formatted = formatTaskList(sortedTasks);
+
+  await message.reply(`**タスク一覧**\n\`\`\`\n${formatted}\n\`\`\``);
+}
+
+/**
+ * 今日のタスク表示
+ */
+async function handleTodayCommand(message) {
+  const tasks = await getTodayTasks();
+  const formatted = formatTaskList(tasks);
+
+  await message.reply(`**今日のタスク**\n\`\`\`\n${formatted}\n\`\`\``);
+}
+
+/**
+ * タスク削除
+ */
+async function handleDeleteCommand(message, content) {
+  const indexMatch = content.match(/削除\s+(\d+)/);
+  if (!indexMatch) {
+    await message.reply('使い方: `削除 [番号]`');
+    return;
+  }
+
+  const index = parseInt(indexMatch[1]);
+  const task = await getTaskByIndex(index);
+
+  if (!task) {
+    await message.reply('指定された番号のタスクが見つかりません。');
+    return;
+  }
+
+  const deleted = await deleteTask(task.id);
+  if (deleted) {
+    await message.reply(`✅ タスクを削除しました: ${task.title}`);
+  } else {
+    await message.reply('タスクの削除に失敗しました。');
+  }
+}
+
+/**
+ * タスク完了
+ */
+async function handleCompleteCommand(message, content) {
+  const indexMatch = content.match(/完了\s+(\d+)/);
+  if (!indexMatch) {
+    await message.reply('使い方: `完了 [番号]`');
+    return;
+  }
+
+  const index = parseInt(indexMatch[1]);
+  const task = await getTaskByIndex(index);
+
+  if (!task) {
+    await message.reply('指定された番号のタスクが見つかりません。');
+    return;
+  }
+
+  const completed = await completeTask(task.id);
+  if (completed) {
+    await message.reply(`✅ タスクを完了しました: ${task.title}`);
+  } else {
+    await message.reply('タスクの完了処理に失敗しました。');
+  }
+}
+
+/**
+ * ヘルプ表示
+ */
+async function handleHelpCommand(message) {
+  const helpText = `
+**Discord タスク管理Bot - 使い方**
+
+📝 **タスク登録**
+自然言語でタスクを入力してください。
+例:
+- 明日レポート提出
+- 3日後に会議
+- 来週月曜に資料作成
+- 今週金曜15時に打ち合わせ
+- 月末までに請求書
+
+📋 **コマンド**
+\`リスト\` または \`一覧\` - 全タスクを表示
+\`今日\` - 今日期限のタスクを表示
+\`削除 [番号]\` - タスクを削除
+\`完了 [番号]\` - タスクを完了にする
+\`ヘルプ\` - このヘルプを表示
+
+⚠️ **優先度**
+「重要」「緊急」「至急」を含むタスクは高優先度になり、Chatworkに即時通知されます。
+
+🔔 **通知**
+- 毎朝8時: 今日と3日以内のタスク
+- 期限1時間前: 個別タスク通知
+  `;
+
+  await message.reply(helpText);
+}
+
+/**
+ * タスク追加
+ */
+async function handleAddTask(message, content) {
+  try {
+    const task = await addTask(content, message.author.id);
+
+    let reply = `✅ タスクを登録しました!\n`;
+    reply += `タスク: ${task.title}\n`;
+    reply += `期限: ${new Date(task.deadline).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}\n`;
+    reply += `優先度: ${task.priority === 'urgent' ? '🔴 緊急' : task.priority === 'high' ? '🟡 高' : '⚪ 通常'}`;
+
+    await message.reply(reply);
+
+    // 緊急タスクの場合はChatworkに通知
+    if (task.priority === 'urgent') {
+      try {
+        const chatworkMessage = formatUrgentNotification(task);
+        await sendMessage(chatworkMessage);
+        console.log('緊急タスクをChatworkに通知しました');
+      } catch (error) {
+        console.error('Chatwork通知エラー:', error);
+      }
+    }
+  } catch (error) {
+    console.error('タスク追加エラー:', error);
+    await message.reply('タスクの登録に失敗しました。日付の形式を確認してください。');
+  }
+}
+
+/**
+ * Discord Botを停止
+ */
+export async function stopBot() {
+  if (client) {
+    await client.destroy();
+    console.log('Discord Botを停止しました');
+  }
+}
+
+/**
+ * Bot接続状態を取得
+ */
+export function isReady() {
+  return client?.isReady() ?? false;
+}
