@@ -47,7 +47,15 @@ export function parseJapaneseDate(text) {
 
   // 日付パターンのマッチング
   const datePatterns = [
-    // 具体的な日付 (MM/DD, M/D, MM月DD日など)
+    // 具体的な日付 (YYYY/MM/DD)
+    { pattern: /(\d{4})\/(\d{1,2})\/(\d{1,2})/, fn: (match) => {
+      const year = parseInt(match[1]);
+      const month = parseInt(match[2]);
+      const day = parseInt(match[3]);
+      return new Date(year, month - 1, day);
+    }},
+
+    // 具体的な日付 (MM/DD, M/D)
     { pattern: /(\d{1,2})\/(\d{1,2})/, fn: (match) => {
       const month = parseInt(match[1]);
       const day = parseInt(match[2]);
