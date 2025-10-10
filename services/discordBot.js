@@ -183,15 +183,13 @@ async function handleAddTask(message, content) {
 
     await message.reply(reply);
 
-    // 緊急タスクの場合はChatworkに通知
-    if (task.priority === 'urgent') {
-      try {
-        const chatworkMessage = formatUrgentNotification(task);
-        await sendMessage(chatworkMessage);
-        console.log('緊急タスクをChatworkに通知しました');
-      } catch (error) {
-        console.error('Chatwork通知エラー:', error);
-      }
+    // すべてのタスクをChatworkに通知
+    try {
+      const chatworkMessage = formatUrgentNotification(task);
+      await sendMessage(chatworkMessage);
+      console.log('タスクをChatworkに通知しました');
+    } catch (error) {
+      console.error('Chatwork通知エラー:', error);
     }
   } catch (error) {
     console.error('タスク追加エラー:', error);

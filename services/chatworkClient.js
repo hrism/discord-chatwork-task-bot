@@ -85,7 +85,7 @@ export function formatDailyNotification(todayTasks, upcomingTasks) {
 }
 
 /**
- * 緊急タスク通知をフォーマット
+ * 新規タスク通知をフォーマット
  * @param {Object} task - タスク情報
  * @returns {string}
  */
@@ -94,10 +94,9 @@ export function formatUrgentNotification(task) {
   const dateStr = `${deadline.getMonth() + 1}月${deadline.getDate()}日`;
   const timeStr = `${String(deadline.getHours()).padStart(2, '0')}:${String(deadline.getMinutes()).padStart(2, '0')}`;
 
-  return `[info][title]🚨 緊急タスク登録[/title]\n` +
+  return `[info][title]📝 新規タスク登録[/title]\n` +
     `タスク: ${task.title}\n` +
-    `期限: ${dateStr} ${timeStr}\n` +
-    `優先度: 緊急\n[/info]`;
+    `期限: ${dateStr} ${timeStr}\n[/info]`;
 }
 
 /**
