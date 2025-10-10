@@ -46,12 +46,14 @@ async function handleMessage(message) {
       await handleListCommand(message);
     } else if (content === '今日') {
       await handleTodayCommand(message);
-    } else if (/削除/.test(content)) {
-      await handleDeleteCommand(message, content);
-    } else if (/完了/.test(content)) {
-      await handleCompleteCommand(message, content);
     } else if (content === 'ヘルプ' || content === 'help') {
       await handleHelpCommand(message);
+    } else if (/削除/.test(content) && /[a-f0-9]{8}/i.test(content)) {
+      // IDが含まれる場合のみ削除コマンドとして処理
+      await handleDeleteCommand(message, content);
+    } else if (/完了/.test(content) && /[a-f0-9]{8}/i.test(content)) {
+      // IDが含まれる場合のみ完了コマンドとして処理
+      await handleCompleteCommand(message, content);
     } else {
       // タスク登録
       await handleAddTask(message, content);

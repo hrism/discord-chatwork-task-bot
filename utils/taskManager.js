@@ -229,10 +229,9 @@ export function formatTaskList(tasks) {
 
   return tasks.map((task) => {
     const deadline = new Date(task.deadline);
-    const priorityIcon = task.priority === 'urgent' ? '🔴' : task.priority === 'high' ? '🟡' : '⚪';
     const dateStr = formatJapaneseDate(deadline);
     const shortId = task.id.substring(0, 8);
-    return `[${shortId}] ${priorityIcon} ${task.title} (${dateStr})`;
+    return `[${shortId}] ${task.title} (${dateStr})`;
   }).join('\n');
 }
 
