@@ -1,5 +1,5 @@
 import { add, set, startOfMonth, endOfMonth, nextMonday, nextTuesday, nextWednesday, nextThursday, nextFriday, nextSaturday, nextSunday, parse, isValid } from 'date-fns';
-import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
+import { formatInTimeZone, utcToZonedTime } from 'date-fns-tz';
 
 const TIMEZONE = process.env.TIMEZONE || 'Asia/Tokyo';
 
@@ -9,7 +9,7 @@ const TIMEZONE = process.env.TIMEZONE || 'Asia/Tokyo';
  * @returns {Object} { date: Date|null, priority: string, title: string }
  */
 export function parseJapaneseDate(text) {
-  const now = toZonedTime(new Date(), TIMEZONE);
+  const now = utcToZonedTime(new Date(), TIMEZONE);
   let targetDate = null;
   let priority = 'normal';
   let title = text;
