@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(railway variables:*)",
+      "Bash(railway logs:*)",
+      "Bash(railway status:*)",
+      "Bash(railway up:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

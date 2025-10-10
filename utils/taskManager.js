@@ -227,10 +227,21 @@ export function formatTaskList(tasks) {
     return 'タスクはありません。';
   }
 
-  return tasks.map((task, index) => {
+  return tasks.map((task) => {
     const deadline = new Date(task.deadline);
     const priorityIcon = task.priority === 'urgent' ? '🔴' : task.priority === 'high' ? '🟡' : '⚪';
     const dateStr = formatJapaneseDate(deadline);
-    return `${index + 1}. ${priorityIcon} ${task.title} (${dateStr})`;
+    const shortId = task.id.substring(0, 8);
+    return `[${shortId}] ${priorityIcon} ${task.title} (${dateStr})`;
   }).join('\n');
+}
+
+/**
+ * IDでタスクを検索（短縮ID対応）
+ * @param {string} shortId - 短縮ID（最初の8文字）
+ * @returns {Promise<Object|null>}
+ */
+export async function getTaskByShortId(shortId) {
+  const data = await loadTasks();
+  return data.tasks.find(t => t.id.startsWith(shortId)) || null;
 }

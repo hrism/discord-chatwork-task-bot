@@ -52,6 +52,30 @@ export function parseJapaneseDate(text) {
 
   // 日付パターンのマッチング
   const datePatterns = [
+    // 具体的な日付 (MM/DD, M/D, MM月DD日など)
+    { pattern: /(\d{1,2})\/(\d{1,2})/, fn: (match) => {
+      const month = parseInt(match[1]);
+      const day = parseInt(match[2]);
+      const currentYear = now.getFullYear();
+      let targetDate = new Date(currentYear, month - 1, day);
+      // 過去の日付の場合は来年とする
+      if (targetDate < now) {
+        targetDate = new Date(currentYear + 1, month - 1, day);
+      }
+      return targetDate;
+    }},
+    { pattern: /(\d{1,2})月(\d{1,2})日/, fn: (match) => {
+      const month = parseInt(match[1]);
+      const day = parseInt(match[2]);
+      const currentYear = now.getFullYear();
+      let targetDate = new Date(currentYear, month - 1, day);
+      // 過去の日付の場合は来年とする
+      if (targetDate < now) {
+        targetDate = new Date(currentYear + 1, month - 1, day);
+      }
+      return targetDate;
+    }},
+
     // 相対日付
     { pattern: /今日/, fn: () => now },
     { pattern: /明日/, fn: () => add(now, { days: 1 }) },

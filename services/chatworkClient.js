@@ -87,16 +87,19 @@ export function formatDailyNotification(todayTasks, upcomingTasks) {
 /**
  * 新規タスク通知をフォーマット
  * @param {Object} task - タスク情報
+ * @param {string} shortId - 短縮タスクID
  * @returns {string}
  */
-export function formatUrgentNotification(task) {
+export function formatUrgentNotification(task, shortId) {
   const deadline = new Date(task.deadline);
   const dateStr = `${deadline.getMonth() + 1}月${deadline.getDate()}日`;
   const timeStr = `${String(deadline.getHours()).padStart(2, '0')}:${String(deadline.getMinutes()).padStart(2, '0')}`;
 
   return `[info][title]📝 新規タスク登録[/title]\n` +
+    `タスクID: ${shortId}\n` +
     `タスク: ${task.title}\n` +
-    `期限: ${dateStr} ${timeStr}\n[/info]`;
+    `期限: ${dateStr} ${timeStr}\n\n` +
+    `完了する場合は、Discordで「完了 ${shortId}」または「${shortId}完了」と送信してください。\n[/info]`;
 }
 
 /**

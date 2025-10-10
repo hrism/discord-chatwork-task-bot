@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits } from 'discord.js';
-import { addTask, getAllTasks, getTodayTasks, getTaskByIndex, completeTask, deleteTask, formatTaskList } from '../utils/taskManager.js';
+import { addTask, getAllTasks, getTodayTasks, getTaskByShortId, completeTask, deleteTask, formatTaskList } from '../utils/taskManager.js';
 import { sendMessage, formatUrgentNotification } from './chatworkClient.js';
 
 const client = new Client({
@@ -46,9 +46,9 @@ async function handleMessage(message) {
       await handleListCommand(message);
     } else if (content === '今日') {
       await handleTodayCommand(message);
-    } else if (content.startsWith('削除 ')) {
+    } else if (/削除/.test(content)) {
       await handleDeleteCommand(message, content);
-    } else if (content.startsWith('完了 ')) {
+    } else if (/完了/.test(content)) {
       await handleCompleteCommand(message, content);
     } else if (content === 'ヘルプ' || content === 'help') {
       await handleHelpCommand(message);
@@ -87,17 +87,17 @@ async function handleTodayCommand(message) {
  * タスク削除
  */
 async function handleDeleteCommand(message, content) {
-  const indexMatch = content.match(/削除\s+(\d+)/);
-  if (!indexMatch) {
-    await message.reply('使い方: `削除 [番号]`');
+  const idMatch = content.match(/[a-f0-9]{8}/i);
+  if (!idMatch) {
+    await message.reply('使い方: `削除 [ID]` または `[ID]削除`\nIDはリスト表示時の[]内の文字列です');
     return;
   }
 
-  const index = parseInt(indexMatch[1]);
-  const task = await getTaskByIndex(index);
+  const shortId = idMatch[0];
+  const task = await getTaskByShortId(shortId);
 
   if (!task) {
-    await message.reply('指定された番号のタスクが見つかりません。');
+    await message.reply('指定されたIDのタスクが見つかりません。');
     return;
   }
 
@@ -113,17 +113,17 @@ async function handleDeleteCommand(message, content) {
  * タスク完了
  */
 async function handleCompleteCommand(message, content) {
-  const indexMatch = content.match(/完了\s+(\d+)/);
-  if (!indexMatch) {
-    await message.reply('使い方: `完了 [番号]`');
+  const idMatch = content.match(/[a-f0-9]{8}/i);
+  if (!idMatch) {
+    await message.reply('使い方: `完了 [ID]` または `[ID]完了`\nIDはリスト表示時の[]内の文字列です');
     return;
   }
 
-  const index = parseInt(indexMatch[1]);
-  const task = await getTaskByIndex(index);
+  const shortId = idMatch[0];
+  const task = await getTaskByShortId(shortId);
 
   if (!task) {
-    await message.reply('指定された番号のタスクが見つかりません。');
+    await message.reply('指定されたIDのタスクが見つかりません。');
     return;
   }
 
@@ -176,7 +176,10 @@ async function handleAddTask(message, content) {
   try {
     const task = await addTask(content, message.author.id);
 
+    const shortId = task.id.substring(0, 8);
+
     let reply = `✅ タスクを登録しました!\n`;
+    reply += `タスクID: ${shortId}\n`;
     reply += `タスク: ${task.title}\n`;
     reply += `期限: ${new Date(task.deadline).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}\n`;
     reply += `優先度: ${task.priority === 'urgent' ? '🔴 緊急' : task.priority === 'high' ? '🟡 高' : '⚪ 通常'}`;
@@ -185,7 +188,7 @@ async function handleAddTask(message, content) {
 
     // すべてのタスクをChatworkに通知
     try {
-      const chatworkMessage = formatUrgentNotification(task);
+      const chatworkMessage = formatUrgentNotification(task, shortId);
       await sendMessage(chatworkMessage);
       console.log('タスクをChatworkに通知しました');
     } catch (error) {
