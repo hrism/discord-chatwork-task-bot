@@ -9,6 +9,7 @@ let scheduledJobs = [];
  */
 export function startScheduler() {
   const morningHour = parseInt(process.env.MORNING_NOTIFY_HOUR || '8', 10);
+  const timezone = process.env.TIMEZONE || 'Asia/Tokyo';
 
   // 毎朝8時（または設定された時刻）に定期通知
   const morningJob = cron.schedule(`0 ${morningHour} * * *`, async () => {
@@ -23,6 +24,8 @@ export function startScheduler() {
     } catch (error) {
       console.error('定期通知の送信に失敗しました:', error.message);
     }
+  }, {
+    timezone: timezone
   });
 
   // 1時間ごとに期限1時間前のタスクをチェック
@@ -33,12 +36,14 @@ export function startScheduler() {
     } catch (error) {
       console.error('期限通知のチェックに失敗しました:', error.message);
     }
+  }, {
+    timezone: timezone
   });
 
   scheduledJobs.push(morningJob, hourlyJob);
   console.log('スケジューラーを起動しました');
-  console.log(`- 定期通知: 毎日${morningHour}:00`);
-  console.log('- 期限通知: 毎時チェック');
+  console.log(`- 定期通知: 毎日${morningHour}:00 (${timezone})`);
+  console.log(`- 期限通知: 毎時チェック (${timezone})`);
 }
 
 /**
