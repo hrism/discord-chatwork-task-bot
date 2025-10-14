@@ -1,4 +1,8 @@
 import 'dotenv/config';
+
+// タイムゾーンを明示的に設定（cronスケジュールとDate処理のため）
+process.env.TZ = process.env.TIMEZONE || 'Asia/Tokyo';
+
 import { startBot, stopBot } from './services/discordBot.js';
 import { startScheduler, stopScheduler } from './services/taskScheduler.js';
 import { testConnection } from './services/chatworkClient.js';
