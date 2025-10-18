@@ -59,13 +59,14 @@ export function formatDailyNotification(overdueTasks, todayTasks, upcomingTasks)
       const deadline = new Date(task.deadline);
       const dateStr = `${deadline.getMonth() + 1}/${deadline.getDate()}`;
       const timeStr = `${String(deadline.getHours()).padStart(2, '0')}:${String(deadline.getMinutes()).padStart(2, '0')}`;
+      const shortId = task.id.substring(0, 8);
 
       // 超過日数を計算
       const diffMs = now - deadline;
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
       const overdueSuffix = diffDays > 0 ? ` - ${diffDays}日超過` : ' - 本日期限切れ';
 
-      message += `🔴 ${task.title} (${dateStr} ${timeStr})${overdueSuffix}\n`;
+      message += `🔴 [${shortId}] ${task.title} (${dateStr} ${timeStr})${overdueSuffix}\n`;
     });
   }
 
@@ -75,7 +76,8 @@ export function formatDailyNotification(overdueTasks, todayTasks, upcomingTasks)
     todayTasks.forEach(task => {
       const deadline = new Date(task.deadline);
       const timeStr = `${String(deadline.getHours()).padStart(2, '0')}:${String(deadline.getMinutes()).padStart(2, '0')}`;
-      message += `🔴 ${task.title} (${timeStr})\n`;
+      const shortId = task.id.substring(0, 8);
+      message += `🔴 [${shortId}] ${task.title} (${timeStr})\n`;
     });
   } else {
     message += '\n【今日期限のタスク】\nなし\n';
@@ -94,7 +96,8 @@ export function formatDailyNotification(overdueTasks, todayTasks, upcomingTasks)
       const deadline = new Date(task.deadline);
       const dateStr = `${deadline.getMonth() + 1}/${deadline.getDate()}`;
       const timeStr = `${String(deadline.getHours()).padStart(2, '0')}:${String(deadline.getMinutes()).padStart(2, '0')}`;
-      message += `🟡 ${task.title} (${dateStr} ${timeStr})\n`;
+      const shortId = task.id.substring(0, 8);
+      message += `🟡 [${shortId}] ${task.title} (${dateStr} ${timeStr})\n`;
     });
   }
 
