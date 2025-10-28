@@ -281,3 +281,24 @@ export async function updateTaskDeadline(taskId, newDateText) {
   await saveTasks(data);
   return task;
 }
+
+/**
+ * タスクの内容を更新
+ * @param {string} taskId - タスクID
+ * @param {string} newContent - 新しいタスク内容
+ * @returns {Promise<Object|null>}
+ */
+export async function updateTaskContent(taskId, newContent) {
+  const data = await loadTasks();
+  const task = data.tasks.find(t => t.id === taskId);
+
+  if (!task) {
+    return null;
+  }
+
+  task.title = newContent.trim();
+  task.updatedAt = new Date().toISOString();
+
+  await saveTasks(data);
+  return task;
+}

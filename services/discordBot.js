@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits } from 'discord.js';
-import { addTask, getAllTasks, getTodayTasks, getTaskByShortId, completeTask, deleteTask, formatTaskList, updateTaskDeadline } from '../utils/taskManager.js';
+import { addTask, getAllTasks, getTodayTasks, getTaskByShortId, completeTask, deleteTask, formatTaskList, updateTaskDeadline, updateTaskContent } from '../utils/taskManager.js';
 import { sendMessage, formatUrgentNotification } from './chatworkClient.js';
 import { formatJapaneseDate } from '../utils/dateParser.js';
 
@@ -58,6 +58,9 @@ async function handleMessage(message) {
     } else if (/変更/.test(content) && /[a-f0-9]{8}/i.test(content)) {
       // IDが含まれる場合のみ変更コマンドとして処理
       await handleUpdateCommand(message, content);
+    } else if (/編集/.test(content) && /[a-f0-9]{8}/i.test(content)) {
+      // IDが含まれる場合のみ編集コマンドとして処理
+      await handleEditCommand(message, content);
     } else {
       // タスク登録
       await handleAddTask(message, content);
@@ -163,6 +166,7 @@ async function handleHelpCommand(message) {
 \`削除 [ID]\` - タスクを削除
 \`完了 [ID]\` - タスクを完了にする
 \`[ID] 10/25\` または \`[ID]を明日に変更\` - タスクの期限を変更
+\`[ID] 編集 新しい内容\` - タスクの内容を編集
 \`ヘルプ\` - このヘルプを表示
 
 🔔 **通知**
@@ -205,6 +209,40 @@ async function handleUpdateCommand(message, content) {
     await message.reply(`✅ タスクの期限を変更しました: ${updated.title}\n新しい期限: ${formatJapaneseDate(new Date(updated.deadline))}`);
   } else {
     await message.reply('タスクの期限変更に失敗しました。');
+  }
+}
+
+/**
+ * タスク内容編集
+ */
+async function handleEditCommand(message, content) {
+  const idMatch = content.match(/[a-f0-9]{8}/i);
+  if (!idMatch) {
+    await message.reply('使い方: `[ID] 編集 新しい内容`\nIDはリスト表示時の[]内の文字列です');
+    return;
+  }
+
+  const shortId = idMatch[0];
+  const task = await getTaskByShortId(shortId);
+
+  if (!task) {
+    await message.reply('指定されたIDのタスクが見つかりません。');
+    return;
+  }
+
+  // ID と「編集」の文字を除去して新しい内容を抽出
+  const newContent = content.replace(shortId, '').replace(/編集/g, '').trim();
+
+  if (!newContent) {
+    await message.reply('新しいタスク内容を指定してください。\n例: `' + shortId + ' 編集 新しいタスク内容`');
+    return;
+  }
+
+  const updated = await updateTaskContent(task.id, newContent);
+  if (updated) {
+    await message.reply(`✅ タスクの内容を編集しました!\n新しい内容: ${updated.title}\n期限: ${formatJapaneseDate(new Date(updated.deadline))}`);
+  } else {
+    await message.reply('タスクの編集に失敗しました。');
   }
 }
 
