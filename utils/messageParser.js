@@ -1,9 +1,5 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 /**
  * OpenAI APIを使ってユーザーメッセージの意図を解析
  * @param {string} message - ユーザーのメッセージ
@@ -16,6 +12,10 @@ export async function parseMessageIntent(message) {
   }
 
   try {
+    // OpenAIクライアントを関数内で初期化
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
