@@ -64,10 +64,8 @@ async function main() {
     console.warn('警告: Chatworkへの接続に失敗しました。トークンとルームIDを確認してください。');
   }
 
-  // 期限切れタスクのアーカイブ
-  console.log('\n期限切れタスクをアーカイブ中...');
-  const archivedCount = await archiveExpiredTasks();
-  console.log(`${archivedCount}件のタスクをアーカイブしました`);
+  // 期限切れタスクのアーカイブは自動実行しない
+  // ユーザーが明示的に削除コマンドを使用するまでタスクは保持される
 
   // Discord Bot起動
   console.log('\nDiscord Bot起動中...');
