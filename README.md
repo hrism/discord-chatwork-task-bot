@@ -73,9 +73,16 @@ Discord Botで自然言語でタスクを登録し、Chatworkで通知を受け�
      DISCORD_TOKEN=あなたのDiscordトークン
      CHATWORK_API_TOKEN=あなたのChatworkトークン
      CHATWORK_ROOM_ID=あなたのChatworkルームID
+     OPENAI_API_KEY=あなたのOpenAI APIキー（オプション）
      TIMEZONE=Asia/Tokyo
      MORNING_NOTIFY_HOUR=8
      ```
+
+   **OpenAI API キーについて（オプション）**:
+   - OpenAI APIキーを設定すると、自然言語でタスク操作が可能になります
+   - 設定しない場合は従来のキーワードマッチングで動作します
+   - APIキーの取得: [OpenAI API Keys](https://platform.openai.com/api-keys)
+   - コスト: 月100メッセージで約$0.03-0.04（GPT-4o-miniを使用）
 
 4. **デプロイ完了**
    - 自動的にデプロイが開始されます
@@ -141,9 +148,15 @@ cp .env.example .env
 DISCORD_TOKEN=your_discord_bot_token_here
 CHATWORK_API_TOKEN=your_chatwork_api_token_here
 CHATWORK_ROOM_ID=your_chatwork_room_id_here
+OPENAI_API_KEY=your_openai_api_key_here  # オプション：自然言語処理を有効化
 TIMEZONE=Asia/Tokyo
 MORNING_NOTIFY_HOUR=8
 ```
+
+**OpenAI API キー（オプション）**:
+- 設定すると自然言語でタスク操作が可能になります（例: "be4bc269のタスクにこのURLを追加"）
+- 設定しない場合は従来のキーワードマッチング（"be4bc269 編集 ..."）で動作します
+- 取得方法: [OpenAI API Keys](https://platform.openai.com/api-keys)
 
 ## 起動方法
 

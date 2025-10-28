@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { addTask, getAllTasks, getTodayTasks, getTaskByShortId, completeTask, deleteTask, formatTaskList, updateTaskDeadline, updateTaskContent } from '../utils/taskManager.js';
 import { sendMessage, formatUrgentNotification } from './chatworkClient.js';
 import { formatJapaneseDate } from '../utils/dateParser.js';
+import { parseMessageIntent } from '../utils/messageParser.js';
 
 const client = new Client({
   intents: [
@@ -42,7 +43,67 @@ async function handleMessage(message) {
   const content = message.content.trim();
 
   try {
-    // コマンドの処理
+    // LLMで意図を解析（OPENAI_API_KEYが設定されている場合）
+    const intent = await parseMessageIntent(content);
+
+    if (intent) {
+      console.log('LLMで解析されたメッセージ:', intent);
+
+      // LLM解析結果に基づいて処理を分岐
+      switch (intent.action) {
+        case 'list':
+          await handleListCommand(message);
+          return;
+
+        case 'today':
+          await handleTodayCommand(message);
+          return;
+
+        case 'help':
+          await handleHelpCommand(message);
+          return;
+
+        case 'delete':
+          if (intent.taskId) {
+            await handleDeleteCommandByLLM(message, intent.taskId);
+          } else {
+            await message.reply('削除するタスクのIDを指定してください。');
+          }
+          return;
+
+        case 'complete':
+          if (intent.taskId) {
+            await handleCompleteCommandByLLM(message, intent.taskId);
+          } else {
+            await message.reply('完了するタスクのIDを指定してください。');
+          }
+          return;
+
+        case 'edit':
+          if (intent.taskId && intent.content) {
+            await handleEditCommandByLLM(message, intent.taskId, intent.content);
+          } else {
+            await message.reply('編集するタスクのIDと新しい内容を指定してください。');
+          }
+          return;
+
+        case 'update':
+          if (intent.taskId && intent.dateText) {
+            await handleUpdateCommandByLLM(message, intent.taskId, intent.dateText);
+          } else {
+            await message.reply('変更するタスクのIDと新しい期限を指定してください。');
+          }
+          return;
+
+        case 'add':
+        default:
+          // タスク登録
+          await handleAddTask(message, intent.content || content);
+          return;
+      }
+    }
+
+    // LLM解析が利用できない場合は従来のキーワードマッチングを使用
     if (content === 'リスト' || content === '一覧') {
       await handleListCommand(message);
     } else if (content === '今日') {
@@ -209,6 +270,82 @@ async function handleUpdateCommand(message, content) {
     await message.reply(`✅ タスクの期限を変更しました: ${updated.title}\n新しい期限: ${formatJapaneseDate(new Date(updated.deadline))}`);
   } else {
     await message.reply('タスクの期限変更に失敗しました。');
+  }
+}
+
+/**
+ * タスク削除（LLM解析版）
+ */
+async function handleDeleteCommandByLLM(message, shortId) {
+  const task = await getTaskByShortId(shortId);
+
+  if (!task) {
+    await message.reply('指定されたIDのタスクが見つかりません。');
+    return;
+  }
+
+  const deleted = await deleteTask(task.id);
+  if (deleted) {
+    await message.reply(`✅ タスクを削除しました: ${task.title}`);
+  } else {
+    await message.reply('タスクの削除に失敗しました。');
+  }
+}
+
+/**
+ * タスク完了（LLM解析版）
+ */
+async function handleCompleteCommandByLLM(message, shortId) {
+  const task = await getTaskByShortId(shortId);
+
+  if (!task) {
+    await message.reply('指定されたIDのタスクが見つかりません。');
+    return;
+  }
+
+  const completed = await completeTask(task.id);
+  if (completed) {
+    await message.reply(`✅ タスクを完了しました: ${task.title}`);
+  } else {
+    await message.reply('タスクの完了処理に失敗しました。');
+  }
+}
+
+/**
+ * タスク期限変更（LLM解析版）
+ */
+async function handleUpdateCommandByLLM(message, shortId, dateText) {
+  const task = await getTaskByShortId(shortId);
+
+  if (!task) {
+    await message.reply('指定されたIDのタスクが見つかりません。');
+    return;
+  }
+
+  const updated = await updateTaskDeadline(task.id, dateText);
+  if (updated) {
+    await message.reply(`✅ タスクの期限を変更しました: ${updated.title}\n新しい期限: ${formatJapaneseDate(new Date(updated.deadline))}`);
+  } else {
+    await message.reply('タスクの期限変更に失敗しました。');
+  }
+}
+
+/**
+ * タスク内容編集（LLM解析版）
+ */
+async function handleEditCommandByLLM(message, shortId, newContent) {
+  const task = await getTaskByShortId(shortId);
+
+  if (!task) {
+    await message.reply('指定されたIDのタスクが見つかりません。');
+    return;
+  }
+
+  const updated = await updateTaskContent(task.id, newContent);
+  if (updated) {
+    await message.reply(`✅ タスクの内容を編集しました!\n新しい内容: ${updated.title}\n期限: ${formatJapaneseDate(new Date(updated.deadline))}`);
+  } else {
+    await message.reply('タスクの編集に失敗しました。');
   }
 }
 

@@ -5,7 +5,9 @@
       "Bash(railway logs:*)",
       "Bash(railway status:*)",
       "Bash(railway up:*)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(TZ=Asia/Tokyo date \"+%Y-%m-%d %H:%M:%S %Z\")",
+      "Bash(TZ=Asia/Tokyo date:*)"
     ],
     "deny": [],
     "ask": []
