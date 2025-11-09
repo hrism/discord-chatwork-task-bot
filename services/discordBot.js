@@ -88,8 +88,8 @@ async function handleMessage(message) {
           return;
 
         case 'update':
-          if (intent.taskId && intent.dateText) {
-            await handleUpdateCommandByLLM(message, intent.taskId, intent.dateText);
+          if (intent.taskId && intent.deadline) {
+            await handleUpdateCommandByLLM(message, intent.taskId, intent.deadline);
           } else {
             await message.reply('変更するタスクのIDと新しい期限を指定してください。');
           }
@@ -98,34 +98,13 @@ async function handleMessage(message) {
         case 'add':
         default:
           // タスク登録
-          await handleAddTask(message, intent.content || content);
+          await handleAddTask(message, intent.content || content, intent.deadline);
           return;
       }
     }
 
-    // LLM解析が利用できない場合は従来のキーワードマッチングを使用
-    if (content === 'リスト' || content === '一覧') {
-      await handleListCommand(message);
-    } else if (content === '今日') {
-      await handleTodayCommand(message);
-    } else if (content === 'ヘルプ' || content === 'help') {
-      await handleHelpCommand(message);
-    } else if (/削除/.test(content) && /[a-f0-9]{8}/i.test(content)) {
-      // IDが含まれる場合のみ削除コマンドとして処理
-      await handleDeleteCommand(message, content);
-    } else if (/完了/.test(content) && /[a-f0-9]{8}/i.test(content)) {
-      // IDが含まれる場合のみ完了コマンドとして処理
-      await handleCompleteCommand(message, content);
-    } else if (/変更/.test(content) && /[a-f0-9]{8}/i.test(content)) {
-      // IDが含まれる場合のみ変更コマンドとして処理
-      await handleUpdateCommand(message, content);
-    } else if (/編集/.test(content) && /[a-f0-9]{8}/i.test(content)) {
-      // IDが含まれる場合のみ編集コマンドとして処理
-      await handleEditCommand(message, content);
-    } else {
-      // タスク登録
-      await handleAddTask(message, content);
-    }
+    // LLM解析が利用できない場合はエラーを返す
+    await message.reply('❌ OpenAI APIが設定されていないため、タスクの登録・変更ができません。\n環境変数 OPENAI_API_KEY を設定してください。');
   } catch (error) {
     console.error('メッセージ処理エラー:', error);
     await message.reply('エラーが発生しました。もう一度お試しください。');
@@ -314,7 +293,7 @@ async function handleCompleteCommandByLLM(message, shortId) {
 /**
  * タスク期限変更（LLM解析版）
  */
-async function handleUpdateCommandByLLM(message, shortId, dateText) {
+async function handleUpdateCommandByLLM(message, shortId, deadline) {
   const task = await getTaskByShortId(shortId);
 
   if (!task) {
@@ -322,7 +301,7 @@ async function handleUpdateCommandByLLM(message, shortId, dateText) {
     return;
   }
 
-  const updated = await updateTaskDeadline(task.id, dateText);
+  const updated = await updateTaskDeadline(task.id, deadline);
   if (updated) {
     await message.reply(`✅ タスクの期限を変更しました: ${updated.title}\n新しい期限: ${formatJapaneseDate(new Date(updated.deadline))}`);
   } else {
@@ -386,9 +365,9 @@ async function handleEditCommand(message, content) {
 /**
  * タスク追加
  */
-async function handleAddTask(message, content) {
+async function handleAddTask(message, content, deadline = null) {
   try {
-    const task = await addTask(content, message.author.id);
+    const task = await addTask(content, message.author.id, deadline);
 
     const shortId = task.id.substring(0, 8);
 

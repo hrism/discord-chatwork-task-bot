@@ -62,17 +62,21 @@ async function saveTasks(data) {
  * 新しいタスクを追加
  * @param {string} text - タスクの内容
  * @param {string} userId - Discord User ID
+ * @param {string|null} deadline - ISO形式の期限（必須）
  * @returns {Promise<Object>} 作成されたタスク
  */
-export async function addTask(text, userId) {
-  const parsed = parseJapaneseDate(text);
+export async function addTask(text, userId, deadline = null) {
+  if (!deadline) {
+    throw new Error('タスクの期限が指定されていません。OpenAI APIによる日付解析が必要です。');
+  }
+
   const data = await loadTasks();
 
   const newTask = {
     id: uuidv4(),
-    title: parsed.title,
-    deadline: parsed.date.toISOString(),
-    priority: parsed.priority,
+    title: text,
+    deadline: deadline,
+    priority: 'normal',
     status: 'pending',
     createdAt: new Date().toISOString(),
     createdBy: userId,
@@ -263,10 +267,14 @@ export async function getTaskByShortId(shortId) {
 /**
  * タスクの期限を更新
  * @param {string} taskId - タスクID
- * @param {string} newDateText - 新しい日付テキスト
+ * @param {string} newDeadline - 新しい期限（ISO形式、必須）
  * @returns {Promise<Object|null>}
  */
-export async function updateTaskDeadline(taskId, newDateText) {
+export async function updateTaskDeadline(taskId, newDeadline) {
+  if (!newDeadline || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(newDeadline)) {
+    throw new Error('タスクの期限はISO形式で指定する必要があります。OpenAI APIによる日付解析が必要です。');
+  }
+
   const data = await loadTasks();
   const task = data.tasks.find(t => t.id === taskId);
 
@@ -274,8 +282,7 @@ export async function updateTaskDeadline(taskId, newDateText) {
     return null;
   }
 
-  const parsed = parseJapaneseDate(newDateText);
-  task.deadline = parsed.date.toISOString();
+  task.deadline = newDeadline;
   task.updatedAt = new Date().toISOString();
 
   await saveTasks(data);

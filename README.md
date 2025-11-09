@@ -168,6 +168,34 @@ npm start
 npm run dev
 ```
 
+## コードの更新と再デプロイ
+
+### Railwayへの変更の反映
+
+Railwayにデプロイしている場合、コードを変更した後にGitHubにpushすると自動的に再デプロイされます。
+
+```bash
+# 変更をステージング
+git add .
+
+# コミット
+git commit -m "変更内容の説明"
+
+# GitHubにpush（Railwayが自動的に検知して再デプロイ）
+git push origin main
+```
+
+**再デプロイの確認**:
+- Railwayのダッシュボードで「Deployments」タブを確認
+- 新しいデプロイが開始され、完了するとBotが自動的に再起動されます
+
+### ローカル環境での再起動
+
+ローカルで開発中にコードを変更した場合：
+
+- **開発モード（`npm run dev`）**: ファイル変更を検知して自動的に再起動
+- **本番モード（`npm start`）**: `Ctrl+C`で停止してから`npm start`で再起動
+
 ## 使い方
 
 ### タスクの登録

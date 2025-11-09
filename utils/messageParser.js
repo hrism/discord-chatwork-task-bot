@@ -43,15 +43,21 @@ export async function parseMessageIntent(message) {
   * "help": ヘルプを表示
   * "complete": タスクを完了にする
   * "delete": タスクを削除
-  * "edit": タスクの内容を編集
-  * "update": タスクの期限を変更
+  * "edit": タスクの内容を編集（**必ずタスクIDが含まれている場合のみ**）
+  * "update": タスクの期限を変更（**必ずタスクIDが含まれている場合のみ**）
   * "add": 新しいタスクを追加（デフォルト）
 
 - taskId: タスクID（8文字の英数字）が含まれる場合は抽出、なければnull
 - content: 編集後のタスク内容、または新規タスクの内容（actionがeditまたはaddの場合）
 - deadline: 期限の日時をISO 8601形式で（actionがupdateまたはaddの場合）。日時表現がない場合は指定日の23:59をデフォルトにする。
 
-重要: deadlineは必ず完全な日時（年月日と時刻）をISO 8601形式（例: 2025-10-30T19:30:00+09:00）で返してください。
+**重要なルール:**
+1. タスクIDが含まれていない場合、「edit」「update」「delete」「complete」アクションは絶対に使用しないこと
+2. タスクIDなしで「修正」「変更」「編集」などの言葉が含まれていても、それは新しいタスクの内容として扱い、actionは"add"とすること
+3. 「〜ではなく〜」のような表現は、タスクIDが明示されていない限り新規タスクの内容として扱うこと
+4. タスクID形式: 8文字の16進数（例: be4bc269, a1b2c3d4）
+
+deadlineは必ず完全な日時（年月日と時刻）をISO 8601形式（例: 2025-10-30T19:30:00+09:00）で返してください。
 「明日の19:30」→ 明日の日付の19:30:00
 「明日」→ 明日の23:59:00
 「今日」→ 今日の23:59:00
@@ -80,7 +86,10 @@ export async function parseMessageIntent(message) {
 → {"action":"list","taskId":null,"content":null,"deadline":null}
 
 例7: "11/3期限 サイトパフォーマンス施策表"
-→ {"action":"add","taskId":null,"content":"サイトパフォーマンス施策表","deadline":"${currentYear}-11-03T23:59:00+09:00"}`,
+→ {"action":"add","taskId":null,"content":"サイトパフォーマンス施策表","deadline":"${currentYear}-11-03T23:59:00+09:00"}
+
+例8: "マクサスプレミアではなくマクサス　ホリエモン六本木店なので、一旦そこだけロゴなど修正いただけたら嬉しいです🙇"
+→ {"action":"add","taskId":null,"content":"マクサスプレミアではなくマクサス　ホリエモン六本木店なので、一旦そこだけロゴなど修正いただけたら嬉しいです🙇","deadline":"${tomorrowStr}T23:59:00+09:00"}`,
         },
         {
           role: 'user',
