@@ -27,14 +27,28 @@ echo "   IP: $INSTANCE_IP"
 echo "2. SSH接続テスト..."
 ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" "$REMOTE_USER@$INSTANCE_IP" "echo 'SSH接続成功'"
 
-# Gitリポジトリをクローン
+# Gitリポジトリをクローン（データは保持）
 echo "3. リポジトリをクローン..."
 ssh -i "$SSH_KEY" "$REMOTE_USER@$INSTANCE_IP" << 'EOF'
+# タスクデータをバックアップ
+if [ -f discord-chatwork-task-bot/data/tasks.json ]; then
+  echo "タスクデータをバックアップ"
+  cp discord-chatwork-task-bot/data/tasks.json /tmp/tasks.json.bak
+fi
+
 if [ -d discord-chatwork-task-bot ]; then
   echo "既存のディレクトリを削除"
   rm -rf discord-chatwork-task-bot
 fi
 git clone https://github.com/hrism/discord-chatwork-task-bot.git
+
+# タスクデータをリストア
+if [ -f /tmp/tasks.json.bak ]; then
+  echo "タスクデータをリストア"
+  mkdir -p discord-chatwork-task-bot/data
+  cp /tmp/tasks.json.bak discord-chatwork-task-bot/data/tasks.json
+  rm /tmp/tasks.json.bak
+fi
 EOF
 
 # .envファイルをアップロード
