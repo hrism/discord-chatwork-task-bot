@@ -27,27 +27,16 @@ echo "   IP: $INSTANCE_IP"
 echo "2. SSH接続テスト..."
 ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" "$REMOTE_USER@$INSTANCE_IP" "echo 'SSH接続成功'"
 
-# Gitリポジトリをクローン（データは保持）
-echo "3. リポジトリをクローン..."
+# コード更新（git pull）または初回クローン
+echo "3. コード更新..."
 ssh -i "$SSH_KEY" "$REMOTE_USER@$INSTANCE_IP" << 'EOF'
-# タスクデータをバックアップ
-if [ -f discord-chatwork-task-bot/data/tasks.json ]; then
-  echo "タスクデータをバックアップ"
-  cp discord-chatwork-task-bot/data/tasks.json /tmp/tasks.json.bak
-fi
-
 if [ -d discord-chatwork-task-bot ]; then
-  echo "既存のディレクトリを削除"
-  rm -rf discord-chatwork-task-bot
-fi
-git clone https://github.com/hrism/discord-chatwork-task-bot.git
-
-# タスクデータをリストア
-if [ -f /tmp/tasks.json.bak ]; then
-  echo "タスクデータをリストア"
-  mkdir -p discord-chatwork-task-bot/data
-  cp /tmp/tasks.json.bak discord-chatwork-task-bot/data/tasks.json
-  rm /tmp/tasks.json.bak
+  echo "既存リポジトリを更新 (git pull)"
+  cd discord-chatwork-task-bot
+  git pull
+else
+  echo "初回クローン"
+  git clone https://github.com/hrism/discord-chatwork-task-bot.git
 fi
 EOF
 
@@ -62,8 +51,8 @@ cd $APP_DIR
 npm install --production
 EOF
 
-# PM2をインストールして起動
-echo "6. PM2で起動..."
+# PM2で再起動
+echo "6. PM2で再起動..."
 ssh -i "$SSH_KEY" "$REMOTE_USER@$INSTANCE_IP" << 'EOF'
 # PM2をグローバルにインストール（なければ）
 if ! command -v pm2 &> /dev/null; then
@@ -72,15 +61,14 @@ fi
 
 cd discord-chatwork-task-bot
 
-# 既存のプロセスを停止
-pm2 delete discord-bot 2>/dev/null || true
-
-# Botを起動
-pm2 start index.js --name discord-bot
-
-# 自動起動設定
-pm2 startup systemd -u ec2-user --hp /home/ec2-user
-pm2 save
+# 既存プロセスがあれば再起動、なければ起動
+if pm2 describe discord-bot > /dev/null 2>&1; then
+  pm2 restart discord-bot
+else
+  pm2 start index.js --name discord-bot
+  pm2 startup systemd -u ec2-user --hp /home/ec2-user
+  pm2 save
+fi
 
 # ステータス確認
 pm2 status
