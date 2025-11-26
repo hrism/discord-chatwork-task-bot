@@ -3,20 +3,32 @@
 # Lightsailデプロイスクリプト
 set -e
 
-INSTANCE_IP="18.181.165.151"
-SSH_KEY="/tmp/discord-bot-key.pem"
-REMOTE_USER="bitnami"
-REPO_URL="git@github.com:hrism/discord-chatwork-task-bot.git"
+INSTANCE_NAME="discord-chatwork-bot"
+REGION="ap-northeast-1"
+SSH_KEY="$HOME/.ssh/lightsail-discord-bot.pem"
+REMOTE_USER="ec2-user"
 APP_DIR="discord-chatwork-task-bot"
 
 echo "=== Discord Chatwork Bot デプロイ開始 ==="
 
+# SSH鍵がなければ取得
+if [ ! -f "$SSH_KEY" ]; then
+  echo "0. SSH鍵を取得..."
+  aws lightsail download-default-key-pair --region "$REGION" --query 'privateKeyBase64' --output text > "$SSH_KEY"
+  chmod 600 "$SSH_KEY"
+fi
+
+# インスタンスIPを動的に取得
+echo "1. インスタンスIP取得..."
+INSTANCE_IP=$(aws lightsail get-instance --instance-name "$INSTANCE_NAME" --region "$REGION" --query 'instance.publicIpAddress' --output text)
+echo "   IP: $INSTANCE_IP"
+
 # SSH接続テスト
-echo "1. SSH接続テスト..."
+echo "2. SSH接続テスト..."
 ssh -o StrictHostKeyChecking=no -i "$SSH_KEY" "$REMOTE_USER@$INSTANCE_IP" "echo 'SSH接続成功'"
 
 # Gitリポジトリをクローン
-echo "2. リポジトリをクローン..."
+echo "3. リポジトリをクローン..."
 ssh -i "$SSH_KEY" "$REMOTE_USER@$INSTANCE_IP" << 'EOF'
 if [ -d discord-chatwork-task-bot ]; then
   echo "既存のディレクトリを削除"
@@ -26,18 +38,18 @@ git clone https://github.com/hrism/discord-chatwork-task-bot.git
 EOF
 
 # .envファイルをアップロード
-echo "3. 環境変数ファイルをアップロード..."
+echo "4. 環境変数ファイルをアップロード..."
 scp -i "$SSH_KEY" .env "$REMOTE_USER@$INSTANCE_IP:~/$APP_DIR/.env"
 
 # 依存関係をインストール
-echo "4. 依存関係をインストール..."
+echo "5. 依存関係をインストール..."
 ssh -i "$SSH_KEY" "$REMOTE_USER@$INSTANCE_IP" << EOF
 cd $APP_DIR
 npm install --production
 EOF
 
 # PM2をインストールして起動
-echo "5. PM2で起動..."
+echo "6. PM2で起動..."
 ssh -i "$SSH_KEY" "$REMOTE_USER@$INSTANCE_IP" << 'EOF'
 # PM2をグローバルにインストール（なければ）
 if ! command -v pm2 &> /dev/null; then
@@ -53,7 +65,7 @@ pm2 delete discord-bot 2>/dev/null || true
 pm2 start index.js --name discord-bot
 
 # 自動起動設定
-pm2 startup systemd -u bitnami --hp /home/bitnami
+pm2 startup systemd -u ec2-user --hp /home/ec2-user
 pm2 save
 
 # ステータス確認
