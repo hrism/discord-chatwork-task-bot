@@ -108,7 +108,7 @@ async function handleMessage(message) {
     }
 
     // LLM解析が利用できない場合はエラーを返す
-    await message.reply('❌ OpenAI APIが設定されていないため、タスクの登録・変更ができません。\n環境変数 OPENAI_API_KEY を設定してください。');
+    await message.reply('❌ Gemini APIが設定されていないため、タスクの登録・変更ができません。\n環境変数 GEMINI_API_KEY を設定してください。');
   } catch (error) {
     console.error('メッセージ処理エラー:', error);
     await message.reply('エラーが発生しました。もう一度お試しください。');

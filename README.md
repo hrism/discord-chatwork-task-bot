@@ -2,6 +2,10 @@
 
 Discord Botで自然言語でタスクを登録し、Chatworkで通知を受け取れるタスク管理システムです。
 
+## デプロイ先
+
+**AWS Lightsail** (※Railwayではない)
+
 ## 機能
 
 ### Discord Bot機能
@@ -32,63 +36,109 @@ Discord Botで自然言語でタスクを登録し、Chatworkで通知を受け�
 
 ## デプロイ方法
 
-### Railway（無料・推奨）
+### AWS Lightsail（月$3.5・推奨）
 
-24時間稼働させるために、Railwayへのデプロイを推奨します。
+24時間稼働させるために、AWS Lightsailへのデプロイを推奨します。
 
-#### 手順
+#### 前提条件
 
-1. **GitHubリポジトリを作成（GitHub CLI使用）**
+- AWS CLIがインストール済み
+- AWS認証情報が設定済み（`aws configure`）
+- GitHubリポジトリが作成済み
+
+#### CLI完結のデプロイ手順
+
+1. **デプロイスクリプトを準備**
+
+   User Dataスクリプト（`user-data.sh`）を作成:
    ```bash
-   # GitHub CLIで認証（初回のみ）
-   gh auth login
+   #!/bin/bash
+   exec > >(tee /var/log/user-data.log)
+   exec 2>&1
 
-   # Gitリポジトリを初期化してプッシュ
-   git init
-   git add .
-   git commit -m "Initial commit"
+   # Node.js 20のインストール
+   curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+   yum install -y nodejs git
 
-   # GitHub CLIでリポジトリ作成とプッシュを一発で実行
-   gh repo create discord-chatwork-task-bot --public --source=. --push
+   # Botユーザーの作成
+   useradd -m -s /bin/bash botuser
+
+   # リポジトリをクローン
+   cd /home/botuser
+   sudo -u botuser git clone https://github.com/YOUR_USERNAME/discord-chatwork-task-bot.git
+   cd discord-chatwork-task-bot
+
+   # 環境変数ファイルを作成
+   cat > .env << 'ENVEOF'
+   DISCORD_TOKEN=あなたのDiscordトークン
+   CHATWORK_API_TOKEN=あなたのChatworkトークン
+   CHATWORK_ROOM_ID=あなたのChatworkルームID
+   GEMINI_API_KEY=あなたのGemini APIキー（オプション）
+   TIMEZONE=Asia/Tokyo
+   MORNING_NOTIFY_HOUR=8
+   ENVEOF
+
+   chown botuser:botuser .env
+
+   # 依存関係のインストール
+   sudo -u botuser npm install --production
+
+   # PM2のインストールと起動
+   npm install -g pm2
+   sudo -u botuser pm2 start index.js --name discord-bot
+   sudo -u botuser pm2 startup systemd -u botuser --hp /home/botuser
+   sudo -u botuser pm2 save
+   env PATH=$PATH:/usr/bin pm2 startup systemd -u botuser --hp /home/botuser
+   systemctl enable pm2-botuser
    ```
 
-   **GitHub CLIがない場合**:
+2. **Lightsailインスタンスを作成**
    ```bash
-   # Homebrewでインストール（Mac）
-   brew install gh
-
-   # またはnpmでインストール
-   npm install -g gh
+   aws lightsail create-instances \
+     --instance-names discord-chatwork-bot \
+     --availability-zone ap-northeast-1a \
+     --blueprint-id amazon_linux_2023 \
+     --bundle-id nano_3_0 \
+     --user-data file:///path/to/user-data.sh \
+     --region ap-northeast-1
    ```
 
-2. **Railwayにデプロイ**
-   - [Railway](https://railway.app/) にアクセス
-   - 「Start a New Project」→「Deploy from GitHub repo」を選択
-   - 作成したリポジトリを選択
+3. **デプロイ完了**
+   - 2-3分待つと自動的にセットアップが完了します
+   - Discordで動作確認してください
 
-3. **環境変数を設定**
-   - Railwayのプロジェクトページで「Variables」タブを開く
-   - 以下の環境変数を追加:
-     ```
-     DISCORD_TOKEN=あなたのDiscordトークン
-     CHATWORK_API_TOKEN=あなたのChatworkトークン
-     CHATWORK_ROOM_ID=あなたのChatworkルームID
-     OPENAI_API_KEY=あなたのOpenAI APIキー（オプション）
-     TIMEZONE=Asia/Tokyo
-     MORNING_NOTIFY_HOUR=8
-     ```
+**料金**: 月$3.5（nano_3_0プラン）
 
-   **OpenAI API キーについて（オプション）**:
-   - OpenAI APIキーを設定すると、自然言語でタスク操作が可能になります
-   - 設定しない場合は従来のキーワードマッチングで動作します
-   - APIキーの取得: [OpenAI API Keys](https://platform.openai.com/api-keys)
-   - コスト: 月100メッセージで約$0.03-0.04（GPT-4o-miniを使用）
+#### 管理コマンド
 
-4. **デプロイ完了**
-   - 自動的にデプロイが開始されます
-   - ログで起動を確認できます
+```bash
+# インスタンスの状態確認
+aws lightsail get-instance --instance-name discord-chatwork-bot --region ap-northeast-1
 
-**無料枠**: 月500時間（このBotなら十分）
+# インスタンス停止（課金ストップ）
+aws lightsail stop-instance --instance-name discord-chatwork-bot --region ap-northeast-1
+
+# インスタンス再起動
+aws lightsail reboot-instance --instance-name discord-chatwork-bot --region ap-northeast-1
+
+# インスタンス削除（完全に削除）
+aws lightsail delete-instance --instance-name discord-chatwork-bot --region ap-northeast-1
+```
+
+#### ブラウザからの管理
+
+AWS Lightsailコンソール: https://lightsail.aws.amazon.com/
+
+- SSH接続（ブラウザベース）
+- ログ確認: `sudo tail -f /var/log/user-data.log`
+- Botステータス確認: `sudo -u botuser pm2 status`
+- Bot再起動: `sudo -u botuser pm2 restart discord-bot`
+
+**Gemini API キーについて（オプション）**:
+- Gemini APIキーを設定すると、自然言語でタスク操作が可能になります
+- 設定しない場合は従来のキーワードマッチングで動作します
+- APIキーの取得: [Google AI Studio](https://aistudio.google.com/apikey)
+- コスト: 無料枠あり（gemini-2.0-flash-expを使用）
 
 ---
 
@@ -148,15 +198,15 @@ cp .env.example .env
 DISCORD_TOKEN=your_discord_bot_token_here
 CHATWORK_API_TOKEN=your_chatwork_api_token_here
 CHATWORK_ROOM_ID=your_chatwork_room_id_here
-OPENAI_API_KEY=your_openai_api_key_here  # オプション：自然言語処理を有効化
+GEMINI_API_KEY=your_gemini_api_key_here  # オプション：自然言語処理を有効化
 TIMEZONE=Asia/Tokyo
 MORNING_NOTIFY_HOUR=8
 ```
 
-**OpenAI API キー（オプション）**:
+**Gemini API キー（オプション）**:
 - 設定すると自然言語でタスク操作が可能になります（例: "be4bc269のタスクにこのURLを追加"）
 - 設定しない場合は従来のキーワードマッチング（"be4bc269 編集 ..."）で動作します
-- 取得方法: [OpenAI API Keys](https://platform.openai.com/api-keys)
+- 取得方法: [Google AI Studio](https://aistudio.google.com/apikey)
 
 ## 起動方法
 
@@ -170,24 +220,44 @@ npm run dev
 
 ## コードの更新と再デプロイ
 
-### Railwayへの変更の反映
+### Lightsailへの変更の反映
 
-Railwayにデプロイしている場合、コードを変更した後にGitHubにpushすると自動的に再デプロイされます。
+コードを変更した後、以下の手順で更新します：
+
+**方法1: GitHubにpushして手動更新（推奨）**
 
 ```bash
-# 変更をステージング
+# 変更をコミット
 git add .
-
-# コミット
 git commit -m "変更内容の説明"
-
-# GitHubにpush（Railwayが自動的に検知して再デプロイ）
 git push origin main
+
+# LightsailインスタンスでGitプル
+# AWSコンソールのブラウザSSHまたはCLIで実行
+ssh -i /tmp/lightsail-key.pem ec2-user@インスタンスIP
+sudo -u botuser -i
+cd discord-chatwork-task-bot
+git pull
+npm install  # 依存関係に変更があれば
+pm2 restart discord-bot
 ```
 
-**再デプロイの確認**:
-- Railwayのダッシュボードで「Deployments」タブを確認
-- 新しいデプロイが開始され、完了するとBotが自動的に再起動されます
+**方法2: User Dataスクリプトで完全再デプロイ**
+
+インスタンスを作り直して最新コードで起動:
+```bash
+# 既存インスタンスを削除
+aws lightsail delete-instance --instance-name discord-chatwork-bot --region ap-northeast-1
+
+# 新しいインスタンスを作成（最新のUser Dataスクリプトで）
+aws lightsail create-instances \
+  --instance-names discord-chatwork-bot \
+  --availability-zone ap-northeast-1a \
+  --blueprint-id amazon_linux_2023 \
+  --bundle-id nano_3_0 \
+  --user-data file:///path/to/user-data.sh \
+  --region ap-northeast-1
+```
 
 ### ローカル環境での再起動
 

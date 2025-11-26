@@ -1,37 +1,35 @@
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { format } from 'date-fns';
+import { utcToZonedTime } from 'date-fns-tz';
 
 /**
- * OpenAI APIを使ってユーザーメッセージの意図を解析
+ * Gemini APIを使ってユーザーメッセージの意図を解析
  * @param {string} message - ユーザーのメッセージ
  * @returns {Promise<Object>} 解析結果 { action, taskId, content, deadline }
  */
 export async function parseMessageIntent(message) {
-  // OpenAI APIキーが設定されていない場合はnullを返す
-  if (!process.env.OPENAI_API_KEY) {
+  // Gemini APIキーが設定されていない場合はnullを返す
+  if (!process.env.GEMINI_API_KEY) {
     return null;
   }
 
   try {
     // 現在時刻を取得（Asia/Tokyo）
     const now = new Date();
-    const currentDateTime = now.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
-    const currentYear = now.getFullYear();
+    const jstNow = utcToZonedTime(now, 'Asia/Tokyo');
+    const currentDateTime = format(jstNow, 'yyyy/MM/dd HH:mm:ss', { timeZone: 'Asia/Tokyo' });
+    const currentYear = jstNow.getFullYear();
 
-    // 明日の日付を計算
-    const tomorrow = new Date(now);
+    // 明日の日付を計算（日本時間ベース）
+    const tomorrow = new Date(jstNow);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    const tomorrowStr = format(tomorrow, 'yyyy-MM-dd');
 
-    // OpenAIクライアントを関数内で初期化
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `あなたはタスク管理Botのメッセージ解析アシスタントです。
+    // Geminiクライアントを初期化
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+    const prompt = `あなたはタスク管理Botのメッセージ解析アシスタントです。
 現在時刻: ${currentDateTime} (Asia/Tokyo)
 現在の年: ${currentYear}
 
@@ -102,21 +100,27 @@ deadlineは必ず完全な日時（年月日と時刻）をISO 8601形式（例:
 → {"action":"complete","taskId":null,"searchQuery":"レポート","content":null,"deadline":null}
 
 例11: "会議のタスク削除して"
-→ {"action":"delete","taskId":null,"searchQuery":"会議","content":null,"deadline":null}`,
-        },
-        {
-          role: 'user',
-          content: message,
-        },
-      ],
-      temperature: 0.1,
-      max_tokens: 200,
-    });
+→ {"action":"delete","taskId":null,"searchQuery":"会議","content":null,"deadline":null}
 
-    const result = response.choices[0].message.content.trim();
+ユーザーメッセージ: "${message}"`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text().trim();
+
+    // マークダウンのコードブロックを除去
+    if (text.startsWith('```json')) {
+      text = text.slice(7);
+    } else if (text.startsWith('```')) {
+      text = text.slice(3);
+    }
+    if (text.endsWith('```')) {
+      text = text.slice(0, -3);
+    }
+    text = text.trim();
 
     // JSONをパース
-    const parsed = JSON.parse(result);
+    const parsed = JSON.parse(text);
 
     console.log('LLM解析結果:', parsed);
 
