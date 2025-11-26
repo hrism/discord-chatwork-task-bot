@@ -48,14 +48,18 @@ export async function parseMessageIntent(message) {
   * "add": 新しいタスクを追加（デフォルト）
 
 - taskId: タスクID（8文字の英数字）が含まれる場合は抽出、なければnull
+- searchQuery: タスク名で検索する場合のキーワード（「〇〇のタスクを完了」のような場合に〇〇を抽出）、なければnull
 - content: 編集後のタスク内容、または新規タスクの内容（actionがeditまたはaddの場合）
 - deadline: 期限の日時をISO 8601形式で（actionがupdateまたはaddの場合）。日時表現がない場合は指定日の23:59をデフォルトにする。
 
 **重要なルール:**
-1. タスクIDが含まれていない場合、「edit」「update」「delete」「complete」アクションは絶対に使用しないこと
-2. タスクIDなしで「修正」「変更」「編集」などの言葉が含まれていても、それは新しいタスクの内容として扱い、actionは"add"とすること
-3. 「〜ではなく〜」のような表現は、タスクIDが明示されていない限り新規タスクの内容として扱うこと
-4. タスクID形式: 8文字の16進数（例: be4bc269, a1b2c3d4）
+1. 「edit」「update」アクションは、タスクIDが含まれている場合のみ使用すること
+2. 「complete」「delete」アクションは、タスクIDまたはタスク名の言及がある場合に使用可能
+3. 「〇〇のタスク完了」「〇〇を完了させて」のような表現は、action="complete"、searchQuery="〇〇"とすること
+4. 「〇〇を削除して」「〇〇のタスク消して」のような表現は、action="delete"、searchQuery="〇〇"とすること
+5. タスクIDなしで「修正」「変更」「編集」などの言葉が含まれていて、かつ明確な完了/削除の意図がない場合は、新しいタスクの内容として扱い、actionは"add"とすること
+6. 「〜ではなく〜」のような表現は、タスクIDが明示されていない限り新規タスクの内容として扱うこと
+7. タスクID形式: 8文字の16進数（例: be4bc269, a1b2c3d4）
 
 deadlineは必ず完全な日時（年月日と時刻）をISO 8601形式（例: 2025-10-30T19:30:00+09:00）で返してください。
 「明日の19:30」→ 明日の日付の19:30:00
@@ -89,7 +93,16 @@ deadlineは必ず完全な日時（年月日と時刻）をISO 8601形式（例:
 → {"action":"add","taskId":null,"content":"サイトパフォーマンス施策表","deadline":"${currentYear}-11-03T23:59:00+09:00"}
 
 例8: "マクサスプレミアではなくマクサス　ホリエモン六本木店なので、一旦そこだけロゴなど修正いただけたら嬉しいです🙇"
-→ {"action":"add","taskId":null,"content":"マクサスプレミアではなくマクサス　ホリエモン六本木店なので、一旦そこだけロゴなど修正いただけたら嬉しいです🙇","deadline":"${tomorrowStr}T23:59:00+09:00"}`,
+→ {"action":"add","taskId":null,"searchQuery":null,"content":"マクサスプレミアではなくマクサス　ホリエモン六本木店なので、一旦そこだけロゴなど修正いただけたら嬉しいです🙇","deadline":"${tomorrowStr}T23:59:00+09:00"}
+
+例9: "電気代のタスク完了させといて"
+→ {"action":"complete","taskId":null,"searchQuery":"電気代","content":null,"deadline":null}
+
+例10: "レポートを完了"
+→ {"action":"complete","taskId":null,"searchQuery":"レポート","content":null,"deadline":null}
+
+例11: "会議のタスク削除して"
+→ {"action":"delete","taskId":null,"searchQuery":"会議","content":null,"deadline":null}`,
         },
         {
           role: 'user',

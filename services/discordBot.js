@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits } from 'discord.js';
-import { addTask, getAllTasks, getTodayTasks, getTaskByShortId, completeTask, deleteTask, formatTaskList, updateTaskDeadline, updateTaskContent } from '../utils/taskManager.js';
+import { addTask, getAllTasks, getTodayTasks, getTaskByShortId, completeTask, deleteTask, formatTaskList, updateTaskDeadline, updateTaskContent, findTaskByName } from '../utils/taskManager.js';
 import { sendMessage, formatUrgentNotification } from './chatworkClient.js';
 import { formatJapaneseDate } from '../utils/dateParser.js';
 import { parseMessageIntent } from '../utils/messageParser.js';
@@ -66,16 +66,20 @@ async function handleMessage(message) {
         case 'delete':
           if (intent.taskId) {
             await handleDeleteCommandByLLM(message, intent.taskId);
+          } else if (intent.searchQuery) {
+            await handleDeleteBySearchQuery(message, intent.searchQuery);
           } else {
-            await message.reply('削除するタスクのIDを指定してください。');
+            await message.reply('削除するタスクのIDまたはタスク名を指定してください。');
           }
           return;
 
         case 'complete':
           if (intent.taskId) {
             await handleCompleteCommandByLLM(message, intent.taskId);
+          } else if (intent.searchQuery) {
+            await handleCompleteBySearchQuery(message, intent.searchQuery);
           } else {
-            await message.reply('完了するタスクのIDを指定してください。');
+            await message.reply('完了するタスクのIDまたはタスク名を指定してください。');
           }
           return;
 
@@ -287,6 +291,46 @@ async function handleCompleteCommandByLLM(message, shortId) {
     await message.reply(`✅ タスクを完了しました: ${task.title}`);
   } else {
     await message.reply('タスクの完了処理に失敗しました。');
+  }
+}
+
+/**
+ * タスク完了（タスク名検索版）
+ */
+async function handleCompleteBySearchQuery(message, searchQuery) {
+  const task = await findTaskByName(searchQuery);
+
+  if (!task) {
+    await message.reply(`「${searchQuery}」に一致するタスクが見つかりません。\nタスク一覧で確認してください。`);
+    return;
+  }
+
+  const completed = await completeTask(task.id);
+  if (completed) {
+    const shortId = task.id.substring(0, 8);
+    await message.reply(`✅ タスクを完了しました!\nタスクID: ${shortId}\nタスク: ${task.title}`);
+  } else {
+    await message.reply('タスクの完了処理に失敗しました。');
+  }
+}
+
+/**
+ * タスク削除（タスク名検索版）
+ */
+async function handleDeleteBySearchQuery(message, searchQuery) {
+  const task = await findTaskByName(searchQuery);
+
+  if (!task) {
+    await message.reply(`「${searchQuery}」に一致するタスクが見つかりません。\nタスク一覧で確認してください。`);
+    return;
+  }
+
+  const deleted = await deleteTask(task.id);
+  if (deleted) {
+    const shortId = task.id.substring(0, 8);
+    await message.reply(`✅ タスクを削除しました!\nタスクID: ${shortId}\nタスク: ${task.title}`);
+  } else {
+    await message.reply('タスクの削除に失敗しました。');
   }
 }
 

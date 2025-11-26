@@ -265,6 +265,46 @@ export async function getTaskByShortId(shortId) {
 }
 
 /**
+ * タスク名（タイトル）でタスクを検索
+ * @param {string} searchQuery - 検索キーワード
+ * @returns {Promise<Object|null>} マッチするタスク（pendingのみ、最も一致度が高いもの）
+ */
+export async function findTaskByName(searchQuery) {
+  const data = await loadTasks();
+  const pendingTasks = data.tasks.filter(t => t.status === 'pending');
+
+  if (pendingTasks.length === 0) {
+    return null;
+  }
+
+  const query = searchQuery.toLowerCase();
+
+  // 完全一致を優先
+  const exactMatch = pendingTasks.find(t => t.title.toLowerCase() === query);
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  // 部分一致（タイトルに検索キーワードが含まれる）
+  const partialMatches = pendingTasks.filter(t =>
+    t.title.toLowerCase().includes(query) || query.includes(t.title.toLowerCase())
+  );
+
+  if (partialMatches.length === 1) {
+    return partialMatches[0];
+  }
+
+  if (partialMatches.length > 1) {
+    // 複数マッチした場合は最も新しいタスクを返す
+    return partialMatches.sort((a, b) =>
+      new Date(b.createdAt) - new Date(a.createdAt)
+    )[0];
+  }
+
+  return null;
+}
+
+/**
  * タスクの期限を更新
  * @param {string} taskId - タスクID
  * @param {string} newDeadline - 新しい期限（ISO形式、必須）
